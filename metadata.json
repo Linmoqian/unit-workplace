@@ -1,0 +1,5 @@
+{
+  "name": "JSON & Task Dashboard",
+  "description": "A unified workspace featuring a JSON file uploader and a grid-based task monitoring system.",
+  "requestFramePermissions": []
+}
