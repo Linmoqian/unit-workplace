@@ -224,24 +224,39 @@ export default function App() {
                 </div>
 
                 <div className="bg-slate-50/50 border border-slate-200 rounded-3xl p-8">
-                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
+                  <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2">
                     <AnimatePresence>
-                      {tasks.map((task) => (
+                      {tasks.map((task, index) => (
                         <motion.button
                           key={task.id}
                           layout
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
-                          whileHover={{ scale: 1.1 }}
+                          whileHover={{}}
                           onClick={() => setSelectedTaskId(task.id)}
                           className={`
-                            aspect-square rounded-lg border-2 transition-all duration-300
+                            relative group aspect-square rounded-lg border-2 transition-all duration-300 overflow-hidden
                             ${selectedTaskId === task.id ? 'ring-2 ring-indigo-600 ring-offset-2' : ''}
-                            ${task.status === 'pending' ? 'bg-white border-slate-200' : ''}
+                            ${task.status === 'pending' ? 'bg-white border-slate-200 hover:border-indigo-300' : ''}
                             ${task.status === 'success' ? 'bg-emerald-500 border-emerald-400' : ''}
                             ${task.status === 'warning' ? 'bg-amber-400 border-amber-300' : ''}
                           `}
-                        />
+                        >
+                          {/* Subtle backdrop on hover */}
+                          <span className="
+                            absolute inset-0 bg-white/90 backdrop-blur-sm
+                            opacity-0 group-hover:opacity-100 transition-opacity duration-300
+                          " />
+                          {/* Floating ID on hover */}
+                          <span className="
+                            absolute inset-0 z-10 flex items-center justify-center
+                            text-sm font-bold tracking-tight text-violet-600
+                            opacity-0 group-hover:opacity-100
+                            transition-opacity duration-300
+                          ">
+                            {index + 1}
+                          </span>
+                        </motion.button>
                       ))}
                     </AnimatePresence>
                   </div>
