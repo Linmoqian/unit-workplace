@@ -64,6 +64,19 @@ export default function App() {
     if (!file) return;
     setUploadStatus('uploading');
     setUploadError(null);
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      console.log('📊 上传数据调试:');
+      console.log('  - 总数:', Array.isArray(data) ? data.length : 'N/A');
+      console.log('  - 类型:', typeof data);
+      console.log('  - 内容:', data);
+      console.log('  - 键名:', typeof data === 'object' ? Object.keys(data) : 'N/A');
+    } catch (err) {
+      console.error('❌ JSON 解析失败:', err);
+    }
+
     await new Promise((resolve) => setTimeout(resolve, 2000));
     setUploadStatus('success');
   };
