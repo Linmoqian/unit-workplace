@@ -9,7 +9,7 @@ import {
   Upload, FileJson, CheckCircle2, Loader2, X,
   LayoutGrid, FileUp, Trash2, RefreshCcw, Info,
   Database, Download, Eye, CheckSquare, Square, RefreshCw, Search,
-  AlertTriangle, XCircle, Trophy, Crown, Medal, Lock
+  AlertTriangle, XCircle, Trophy, Crown, Medal, Lock, Menu
 } from 'lucide-react';
 import tasksData from '@/json/images.json';
 
@@ -598,9 +598,9 @@ export default function App() {
         onCancel={() => setPasswordDialog(prev => ({ ...prev, isOpen: false }))}
       />
 
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
-        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+      {/* Desktop Navigation */}
+      <nav className="hidden md:flex sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
+        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between w-full">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-indigo-200">
               <RefreshCcw size={18} />
@@ -613,34 +613,87 @@ export default function App() {
               className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${activeTab === 'uploader' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             >
               <FileUp size={16} />
-              File Upload
+              Upload
             </button>
             <button
               onClick={() => setActiveTab('monitor')}
               className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${activeTab === 'monitor' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             >
               <LayoutGrid size={16} />
-              Task Monitor
+              Monitor
             </button>
             <button
               onClick={() => setActiveTab('admin')}
               className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${activeTab === 'admin' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             >
               <Database size={16} />
-              Data Admin
+              Admin
             </button>
             <button
               onClick={() => setActiveTab('leaderboard')}
               className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${activeTab === 'leaderboard' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             >
               <Trophy size={16} />
-              Leaderboard
+              Ranks
             </button>
           </div>
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto p-6 md:p-12">
+      {/* Mobile Top Bar */}
+      <div className="md:hidden sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100">
+        <div className="px-4 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center text-white">
+              <RefreshCcw size={14} />
+            </div>
+            <span className="font-bold text-sm">Workspace</span>
+          </div>
+          <button
+            onClick={fetchDBData}
+            disabled={isDBLoading}
+            className="p-2 bg-slate-100 rounded-xl"
+          >
+            <RefreshCw size={16} className={isDBLoading ? 'animate-spin' : ''} />
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 pb-safe">
+        <div className="flex justify-around items-center h-16">
+          <button
+            onClick={() => setActiveTab('uploader')}
+            className={`flex flex-col items-center justify-center gap-1 px-4 py-2 ${activeTab === 'uploader' ? 'text-indigo-600' : 'text-slate-400'}`}
+          >
+            <FileUp size={20} />
+            <span className="text-[10px] font-medium">Upload</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('monitor')}
+            className={`flex flex-col items-center justify-center gap-1 px-4 py-2 ${activeTab === 'monitor' ? 'text-indigo-600' : 'text-slate-400'}`}
+          >
+            <LayoutGrid size={20} />
+            <span className="text-[10px] font-medium">Monitor</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('admin')}
+            className={`flex flex-col items-center justify-center gap-1 px-4 py-2 ${activeTab === 'admin' ? 'text-indigo-600' : 'text-slate-400'}`}
+          >
+            <Database size={20} />
+            <span className="text-[10px] font-medium">Admin</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('leaderboard')}
+            className={`flex flex-col items-center justify-center gap-1 px-4 py-2 ${activeTab === 'leaderboard' ? 'text-indigo-600' : 'text-slate-400'}`}
+          >
+            <Trophy size={20} />
+            <span className="text-[10px] font-medium">Ranks</span>
+          </button>
+        </div>
+      </nav>
+
+      <main className="max-w-7xl mx-auto p-4 md:p-6 lg:p-12 pb-24 md:pb-12">
         <AnimatePresence mode="wait">
           {activeTab === 'uploader' ? (
             <motion.div
@@ -781,14 +834,39 @@ export default function App() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+              className="flex flex-col lg:grid lg:grid-cols-3 gap-6 lg:gap-8"
             >
-              <div className="lg:col-span-2 space-y-6">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div>
-                      <h2 className="text-xl font-bold text-slate-900">Task Core Grid</h2>
-                      <p className="text-slate-500 text-sm">Real-time unit status visualization</p>
+              {/* Mobile Stats Bar */}
+              <div className="lg:hidden flex items-center gap-2 overflow-x-auto pb-2 -mx-4 px-4">
+                <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl">
+                  <span className="text-xs text-slate-400">Total</span>
+                  <span className="font-bold text-slate-900">{stats.total}</span>
+                </div>
+                <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-100 rounded-xl">
+                  <span className="text-xs text-emerald-500">Done</span>
+                  <span className="font-bold text-emerald-600">{stats.done}</span>
+                </div>
+                <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl">
+                  <span className="text-xs text-slate-500">Pending</span>
+                  <span className="font-bold text-slate-700">{stats.pending}</span>
+                </div>
+                <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-indigo-50 border border-indigo-100 rounded-xl">
+                  <span className="text-xs text-indigo-500">Progress</span>
+                  <span className="font-bold text-indigo-600">
+                    {stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0}%
+                  </span>
+                </div>
+              </div>
+
+              <div className="lg:col-span-2 space-y-4 lg:space-y-6">
+                <div className="flex items-center justify-between gap-2 lg:gap-4">
+                  <div className="flex items-center gap-2 lg:gap-3">
+                    <div className="hidden sm:block">
+                      <h2 className="text-lg lg:text-xl font-bold text-slate-900">Task Core Grid</h2>
+                      <p className="text-slate-500 text-xs lg:text-sm">Real-time unit status visualization</p>
+                    </div>
+                    <div className="sm:hidden">
+                      <h2 className="text-base font-bold text-slate-900">Task Grid</h2>
                     </div>
                     <button
                       onClick={fetchDBData}
@@ -796,17 +874,17 @@ export default function App() {
                       className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors text-slate-600 disabled:opacity-50"
                       title="Sync with database"
                     >
-                      <RefreshCw size={18} className={isDBLoading ? 'animate-spin' : ''} />
+                      <RefreshCw size={16} className={isDBLoading ? 'animate-spin' : ''} />
                     </button>
                   </div>
                   <div className="relative">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="text"
                       placeholder="Search..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9 pr-3 py-2 w-32 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="pl-8 pr-8 py-2 w-28 sm:w-32 lg:w-40 bg-white border border-slate-200 rounded-xl text-xs lg:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                     {searchQuery && (
                       <button
@@ -819,7 +897,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="bg-slate-50/50 border border-slate-200 rounded-3xl p-8">
+                <div className="bg-slate-50/50 border border-slate-200 rounded-2xl lg:rounded-3xl p-4 lg:p-8">
                   <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(48px, 1fr))' }}>
                     <AnimatePresence>
                       {filteredTasks.map((task) => (
@@ -856,7 +934,8 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="space-y-6">
+              {/* Desktop Sidebar */}
+              <div className="hidden lg:block space-y-6">
                 <div className="lg:sticky lg:top-24 bg-slate-50/50 border border-slate-200 rounded-3xl p-6 space-y-6">
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Status Monitor</h3>
                   <div className="grid grid-cols-2 gap-3">
@@ -919,12 +998,12 @@ export default function App() {
               className="space-y-6"
             >
               {/* Header */}
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-bold text-slate-900">Data Administration</h2>
                   <p className="text-slate-500 text-sm mt-1">Manage uploaded JSON records</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <button
                     onClick={fetchDBData}
                     disabled={isDBLoading}
@@ -935,47 +1014,49 @@ export default function App() {
                   <button
                     onClick={downloadSelected}
                     disabled={selectedIds.size === 0}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold transition-all ${
+                    className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 rounded-xl font-semibold transition-all ${
                       selectedIds.size > 0
                         ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-100'
                         : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                     }`}
                   >
-                    <Download size={18} />
-                    Download ({selectedIds.size})
+                    <Download size={16} />
+                    <span className="hidden sm:inline">Download</span>
+                    <span className="text-xs sm:text-sm">({selectedIds.size})</span>
                   </button>
                   <button
                     onClick={deleteSelected}
                     disabled={selectedIds.size === 0}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold transition-all ${
+                    className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 rounded-xl font-semibold transition-all ${
                       selectedIds.size > 0
                         ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-lg shadow-rose-100'
                         : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                     }`}
                   >
-                    <Trash2 size={18} />
-                    Delete ({selectedIds.size})
+                    <Trash2 size={16} />
+                    <span className="hidden sm:inline">Delete</span>
+                    <span className="text-xs sm:text-sm">({selectedIds.size})</span>
                   </button>
                 </div>
               </div>
 
               {/* Stats */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-slate-50/50 border border-slate-200 rounded-2xl p-5">
-                  <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-2">Total Records</p>
-                  <p className="text-3xl font-bold text-slate-900">{records.length}</p>
+              <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                <div className="bg-slate-50/50 border border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-5">
+                  <p className="text-[9px] sm:text-[10px] text-slate-400 uppercase tracking-widest mb-1 sm:mb-2">Total</p>
+                  <p className="text-xl sm:text-3xl font-bold text-slate-900">{records.length}</p>
                 </div>
-                <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
-                  <p className="text-[10px] text-indigo-500 uppercase tracking-widest mb-2">Selected</p>
-                  <p className="text-3xl font-bold text-indigo-600">{selectedIds.size}</p>
+                <div className="bg-indigo-50 border border-indigo-100 rounded-xl sm:rounded-2xl p-3 sm:p-5">
+                  <p className="text-[9px] sm:text-[10px] text-indigo-500 uppercase tracking-widest mb-1 sm:mb-2">Selected</p>
+                  <p className="text-xl sm:text-3xl font-bold text-indigo-600">{selectedIds.size}</p>
                 </div>
-                <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5">
-                  <p className="text-[10px] text-emerald-500 uppercase tracking-widest mb-2">Last Updated</p>
-                  <p className="text-lg font-bold text-emerald-600 truncate">{records[0] ? formatDate(records[0].created_at) : 'N/A'}</p>
+                <div className="bg-emerald-50 border border-emerald-100 rounded-xl sm:rounded-2xl p-3 sm:p-5">
+                  <p className="text-[9px] sm:text-[10px] text-emerald-500 uppercase tracking-widest mb-1 sm:mb-2">Updated</p>
+                  <p className="text-sm sm:text-lg font-bold text-emerald-600 truncate">{records[0] ? formatDate(records[0].created_at) : 'N/A'}</p>
                 </div>
               </div>
 
-              {/* Data Table */}
+              {/* Data Table / Cards */}
               <div className="bg-slate-50/50 border border-slate-200 rounded-3xl overflow-hidden">
                 {isDBLoading ? (
                   <div className="flex items-center justify-center py-20">
@@ -988,101 +1069,192 @@ export default function App() {
                     <p className="text-sm mt-1">Upload some JSON files to get started</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-slate-200 bg-white/50">
-                          <th className="text-left p-4 w-12">
-                            <button
-                              onClick={toggleSelectAll}
-                              className="p-1 rounded hover:bg-slate-200 transition-colors"
-                            >
-                              {selectedIds.size === records.length ? (
-                                <CheckSquare size={18} className="text-indigo-600" />
-                              ) : (
-                                <Square size={18} className="text-slate-400" />
-                              )}
-                            </button>
-                          </th>
-                          <th className="text-left p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID</th>
-                          <th className="text-left p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Filename</th>
-                          <th className="text-left p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Author</th>
-                          <th className="text-left p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Preview</th>
-                          <th className="text-left p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Created At</th>
-                          <th className="text-left p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <AnimatePresence>
-                          {records.map((record, index) => (
-                            <motion.tr
-                              key={record.id}
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: index * 0.05 }}
-                              className={`border-b border-slate-100 hover:bg-white/80 transition-colors ${
-                                selectedIds.has(record.id) ? 'bg-indigo-50/50' : ''
-                              }`}
-                            >
-                              <td className="p-4">
-                                <button
-                                  onClick={() => toggleSelect(record.id)}
-                                  className="p-1 rounded hover:bg-slate-200 transition-colors"
-                                >
-                                  {selectedIds.has(record.id) ? (
-                                    <CheckSquare size={18} className="text-indigo-600" />
-                                  ) : (
-                                    <Square size={18} className="text-slate-400" />
-                                  )}
-                                </button>
-                              </td>
-                              <td className="p-4">
-                                <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 text-sm font-bold text-slate-600">
-                                  {record.id}
-                                </span>
-                              </td>
-                              <td className="p-4">
-                                <span className="text-sm text-slate-600 font-mono">{record.filename || '-'}</span>
-                              </td>
-                              <td className="p-4">
-                                <span className="text-sm text-slate-600">{record.author || '-'}</span>
-                              </td>
-                              <td className="p-4 max-w-md">
-                                <code className="text-xs bg-slate-100 px-2 py-1 rounded font-mono text-slate-600 block truncate">
-                                  {JSON.stringify(record.data).slice(0, 60)}...
-                                </code>
-                              </td>
-                              <td className="p-4">
-                                <span className="text-sm text-slate-500">{formatDate(record.created_at)}</span>
-                              </td>
-                              <td className="p-4">
-                                <div className="flex items-center gap-2">
+                  <>
+                    {/* Desktop Table */}
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-slate-200 bg-white/50">
+                            <th className="text-left p-4 w-12">
+                              <button
+                                onClick={toggleSelectAll}
+                                className="p-1 rounded hover:bg-slate-200 transition-colors"
+                              >
+                                {selectedIds.size === records.length ? (
+                                  <CheckSquare size={18} className="text-indigo-600" />
+                                ) : (
+                                  <Square size={18} className="text-slate-400" />
+                                )}
+                              </button>
+                            </th>
+                            <th className="text-left p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID</th>
+                            <th className="text-left p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Filename</th>
+                            <th className="text-left p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Author</th>
+                            <th className="text-left p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Preview</th>
+                            <th className="text-left p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Created At</th>
+                            <th className="text-left p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <AnimatePresence>
+                            {records.map((record, index) => (
+                              <motion.tr
+                                key={record.id}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.02 }}
+                                className={`border-b border-slate-100 hover:bg-white/80 transition-colors ${
+                                  selectedIds.has(record.id) ? 'bg-indigo-50/50' : ''
+                                }`}
+                              >
+                                <td className="p-4">
                                   <button
-                                    onClick={() => downloadSingle(record)}
-                                    className="p-2 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-indigo-600 transition-colors"
-                                    title="Download"
+                                    onClick={() => toggleSelect(record.id)}
+                                    className="p-1 rounded hover:bg-slate-200 transition-colors"
                                   >
-                                    <Download size={16} />
+                                    {selectedIds.has(record.id) ? (
+                                      <CheckSquare size={18} className="text-indigo-600" />
+                                    ) : (
+                                      <Square size={18} className="text-slate-400" />
+                                    )}
                                   </button>
-                                  <button
-                                    onClick={() => {
-                                      const blob = new Blob([JSON.stringify(record.data, null, 2)], { type: 'application/json' });
-                                      const url = URL.createObjectURL(blob);
-                                      window.open(url, '_blank');
-                                    }}
-                                    className="p-2 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-emerald-600 transition-colors"
-                                    title="Preview"
-                                  >
-                                    <Eye size={16} />
-                                  </button>
+                                </td>
+                                <td className="p-4">
+                                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 text-sm font-bold text-slate-600">
+                                    {record.id}
+                                  </span>
+                                </td>
+                                <td className="p-4">
+                                  <span className="text-sm text-slate-600 font-mono">{record.filename || '-'}</span>
+                                </td>
+                                <td className="p-4">
+                                  <span className="text-sm text-slate-600">{record.author || '-'}</span>
+                                </td>
+                                <td className="p-4 max-w-md">
+                                  <code className="text-xs bg-slate-100 px-2 py-1 rounded font-mono text-slate-600 block truncate">
+                                    {JSON.stringify(record.data).slice(0, 60)}...
+                                  </code>
+                                </td>
+                                <td className="p-4">
+                                  <span className="text-sm text-slate-500">{formatDate(record.created_at)}</span>
+                                </td>
+                                <td className="p-4">
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => downloadSingle(record)}
+                                      className="p-2 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-indigo-600 transition-colors"
+                                      title="Download"
+                                    >
+                                      <Download size={16} />
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        const blob = new Blob([JSON.stringify(record.data, null, 2)], { type: 'application/json' });
+                                        const url = URL.createObjectURL(blob);
+                                        window.open(url, '_blank');
+                                      }}
+                                      className="p-2 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-emerald-600 transition-colors"
+                                      title="Preview"
+                                    >
+                                      <Eye size={16} />
+                                    </button>
+                                  </div>
+                                </td>
+                              </motion.tr>
+                            ))}
+                          </AnimatePresence>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile Card List */}
+                    <div className="md:hidden divide-y divide-slate-100">
+                      {/* Select All Header */}
+                      <div className="flex items-center justify-between p-4 bg-white/50">
+                        <button
+                          onClick={toggleSelectAll}
+                          className="flex items-center gap-2 text-sm text-slate-600"
+                        >
+                          {selectedIds.size === records.length ? (
+                            <CheckSquare size={18} className="text-indigo-600" />
+                          ) : (
+                            <Square size={18} className="text-slate-400" />
+                          )}
+                          <span>Select All ({records.length})</span>
+                        </button>
+                        {selectedIds.size > 0 && (
+                          <span className="text-xs text-indigo-600 font-medium">
+                            {selectedIds.size} selected
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Cards */}
+                      <AnimatePresence>
+                        {records.map((record, index) => (
+                          <motion.div
+                            key={record.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.02 }}
+                            className={`p-4 ${selectedIds.has(record.id) ? 'bg-indigo-50/50' : ''}`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <button
+                                onClick={() => toggleSelect(record.id)}
+                                className="mt-1 p-1 rounded hover:bg-slate-200 transition-colors flex-shrink-0"
+                              >
+                                {selectedIds.has(record.id) ? (
+                                  <CheckSquare size={20} className="text-indigo-600" />
+                                ) : (
+                                  <Square size={20} className="text-slate-400" />
+                                )}
+                              </button>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2 mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-slate-100 text-xs font-bold text-slate-600">
+                                      {record.id}
+                                    </span>
+                                    <span className="text-sm font-semibold text-slate-900 truncate">
+                                      {record.filename || 'Unnamed'}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1 flex-shrink-0">
+                                    <button
+                                      onClick={() => downloadSingle(record)}
+                                      className="p-2 rounded-lg hover:bg-slate-200 text-slate-500"
+                                    >
+                                      <Download size={16} />
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        const blob = new Blob([JSON.stringify(record.data, null, 2)], { type: 'application/json' });
+                                        const url = URL.createObjectURL(blob);
+                                        window.open(url, '_blank');
+                                      }}
+                                      className="p-2 rounded-lg hover:bg-slate-200 text-slate-500"
+                                    >
+                                      <Eye size={16} />
+                                    </button>
+                                  </div>
                                 </div>
-                              </td>
-                            </motion.tr>
-                          ))}
-                        </AnimatePresence>
-                      </tbody>
-                    </table>
-                  </div>
+                                <div className="flex items-center gap-3 text-xs text-slate-500">
+                                  {record.author && (
+                                    <span className="flex items-center gap-1">
+                                      <span className="font-medium text-slate-400">by</span>
+                                      <span className="text-slate-600">{record.author}</span>
+                                    </span>
+                                  )}
+                                  <span>{formatDate(record.created_at)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  </>
                 )}
               </div>
 
