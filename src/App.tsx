@@ -8,7 +8,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Upload, FileJson, CheckCircle2, Loader2, X,
   LayoutGrid, FileUp, Trash2, RefreshCcw, Info,
-  Database, Download, Eye, CheckSquare, Square, RefreshCw, Search
+  Database, Download, Eye, CheckSquare, Square, RefreshCw, Search,
+  AlertTriangle, XCircle, Trophy, Crown, Medal
 } from 'lucide-react';
 import tasksData from '@/json/images.json';
 
@@ -16,6 +17,13 @@ import tasksData from '@/json/images.json';
 type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
 type TaskStatus = 'pending' | 'done';
 type TaskBackground = 'white' | 'green' | 'black';
+type ToastType = 'success' | 'error' | 'warning' | 'info';
+
+interface Toast {
+  id: number;
+  type: ToastType;
+  message: string;
+}
 
 interface Task {
   id: string;
@@ -32,11 +40,128 @@ interface StoredRecord {
   created_at: string;
 }
 
-type Tab = 'uploader' | 'monitor' | 'admin';
+type Tab = 'uploader' | 'monitor' | 'admin' | 'leaderboard';
+
+// --- Toast Component ---
+const ToastNotification: React.FC<{ toast: Toast; onDismiss: (id: number) => void }> = ({ toast, onDismiss }) => {
+  const icons = {
+    success: <CheckCircle2 size={18} className="text-emerald-500" />,
+    error: <XCircle size={18} className="text-rose-500" />,
+    warning: <AlertTriangle size={18} className="text-amber-500" />,
+    info: <Info size={18} className="text-indigo-500" />
+  };
+  const bgColors = {
+    success: 'bg-emerald-50 border-emerald-200',
+    error: 'bg-rose-50 border-rose-200',
+    warning: 'bg-amber-50 border-amber-200',
+    info: 'bg-indigo-50 border-indigo-200'
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 100, scale: 0.9 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, x: 100, scale: 0.9 }}
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg ${bgColors[toast.type]}`}
+    >
+      {icons[toast.type]}
+      <span className="text-sm font-medium text-slate-700">{toast.message}</span>
+      <button onClick={() => onDismiss(toast.id)} className="ml-2 text-slate-400 hover:text-slate-600">
+        <X size={14} />
+      </button>
+    </motion.div>
+  );
+};
+
+// --- Confirm Dialog Component ---
+const ConfirmDialog: React.FC<{
+  isOpen: boolean;
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  variant?: 'danger' | 'warning';
+}> = ({ isOpen, title, message, confirmText = 'Confirm', cancelText = 'Cancel', onConfirm, onCancel, variant = 'danger' }) => {
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+        onClick={onCancel}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          onClick={(e) => e.stopPropagation()}
+          className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`p-2 rounded-xl ${variant === 'danger' ? 'bg-rose-100' : 'bg-amber-100'}`}>
+              <AlertTriangle size={24} className={variant === 'danger' ? 'text-rose-500' : 'text-amber-500'} />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+          </div>
+          <p className="text-slate-600 text-sm mb-6">{message}</p>
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={onCancel}
+              className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
+            >
+              {cancelText}
+            </button>
+            <button
+              onClick={onConfirm}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold text-white transition-colors ${
+                variant === 'danger' ? 'bg-rose-500 hover:bg-rose-600' : 'bg-amber-500 hover:bg-amber-600'
+              }`}
+            >
+              {confirmText}
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
 
 // --- Main App ---
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('uploader');
+
+  // ========== TOAST SYSTEM ==========
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const toastIdRef = useRef(0);
+
+  const showToast = useCallback((type: ToastType, message: string) => {
+    const id = ++toastIdRef.current;
+    setToasts(prev => [...prev, { id, type, message }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4000);
+  }, []);
+
+  const dismissToast = useCallback((id: number) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  // ========== CONFIRM DIALOG ==========
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+
+  const showConfirm = useCallback((title: string, message: string, onConfirm: () => void) => {
+    setConfirmDialog({ isOpen: true, title, message, onConfirm });
+  }, []);
 
   // ========== SHARED DATA SOURCE ==========
   const [records, setRecords] = useState<StoredRecord[]>([]);
@@ -77,6 +202,37 @@ export default function App() {
     });
     return set;
   }, [records]);
+
+  // ========== AUTHOR LEADERBOARD ==========
+  const authorLeaderboard = useMemo(() => {
+    const authorCounts = new Map<string, number>();
+    records.forEach(r => {
+      const author = r.author?.trim() || 'Anonymous';
+      authorCounts.set(author, (authorCounts.get(author) || 0) + 1);
+    });
+
+    return Array.from(authorCounts.entries())
+      .map(([author, count]) => ({ author, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10); // Top 10
+  }, [records]);
+
+  // 初始化加载 & Tab 切换时加载数据
+  const hasLoadedOnce = useRef(false);
+
+  useEffect(() => {
+    if (!hasLoadedOnce.current) {
+      hasLoadedOnce.current = true;
+      fetchDBData();
+    }
+  }, [fetchDBData]);
+
+  // Tab 切换时清空选中状态
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setSelectedTaskId(null);
+    setSearchQuery('');
+  }, [activeTab]);
 
   // ========== TASK MONITOR ==========
   // 任务列表：从 images.json 加载，status 根据 dbFilenames 动态计算
@@ -154,19 +310,28 @@ export default function App() {
   const deleteSelected = async () => {
     if (selectedIds.size === 0) return;
 
-    try {
-      const deletePromises = Array.from(selectedIds).map(id =>
-        fetch(`http://localhost:3001/api/tasks/${id}`, { method: 'DELETE' })
-      );
-      await Promise.all(deletePromises);
+    showConfirm(
+      'Delete Records',
+      `Are you sure you want to delete ${selectedIds.size} record(s)? This action cannot be undone.`,
+      async () => {
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        try {
+          const deletePromises = Array.from(selectedIds).map(id =>
+            fetch(`http://localhost:3001/api/tasks/${id}`, { method: 'DELETE' })
+          );
+          await Promise.all(deletePromises);
 
-      // 更新本地 records
-      setRecords(prev => prev.filter(r => !selectedIds.has(r.id)));
-      console.log(`✅ Deleted ${selectedIds.size} record(s)`);
-      setSelectedIds(new Set());
-    } catch (err) {
-      console.error('❌ Delete failed:', err);
-    }
+          // 更新本地 records
+          setRecords(prev => prev.filter(r => !selectedIds.has(r.id)));
+          showToast('success', `Deleted ${selectedIds.size} record(s)`);
+          console.log(`✅ Deleted ${selectedIds.size} record(s)`);
+          setSelectedIds(new Set());
+        } catch (err) {
+          console.error('❌ Delete failed:', err);
+          showToast('error', 'Failed to delete records');
+        }
+      }
+    );
   };
 
   const formatDate = (iso: string) => {
@@ -224,6 +389,7 @@ export default function App() {
 
     let successCount = 0;
     let failCount = 0;
+    const failedFiles: string[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -244,10 +410,12 @@ export default function App() {
           console.log(`   ✅ Success | ID: ${result.id}`);
         } else {
           failCount++;
+          failedFiles.push(file.name);
           console.error(`   ❌ Failed:`, result.error);
         }
       } catch (err) {
         failCount++;
+        failedFiles.push(file.name);
         console.error(`   ❌ Parse error:`, err);
       }
       setUploadProgress({ total: files.length, done: i + 1 });
@@ -256,6 +424,15 @@ export default function App() {
     console.log(`\n📊 Upload complete: ${successCount} success / ${failCount} failed`);
     setUploadStatus('success');
     setUploadProgress(null);
+
+    // 显示上传结果
+    if (failCount === 0) {
+      showToast('success', `All ${successCount} file(s) uploaded successfully`);
+    } else if (successCount === 0) {
+      showToast('error', `All uploads failed. Check file format.`);
+    } else {
+      showToast('warning', `${successCount} succeeded, ${failCount} failed`);
+    }
 
     // 上传成功后刷新共享数据
     if (successCount > 0) {
@@ -282,6 +459,25 @@ export default function App() {
   // ========== RENDER ==========
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-700">
+      {/* Toast Container */}
+      <div className="fixed top-20 right-6 z-50 flex flex-col gap-2">
+        <AnimatePresence>
+          {toasts.map(toast => (
+            <ToastNotification key={toast.id} toast={toast} onDismiss={dismissToast} />
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+        variant="danger"
+      />
+
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -312,6 +508,13 @@ export default function App() {
             >
               <Database size={16} />
               Data Admin
+            </button>
+            <button
+              onClick={() => setActiveTab('leaderboard')}
+              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${activeTab === 'leaderboard' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              <Trophy size={16} />
+              Leaderboard
             </button>
           </div>
         </div>
@@ -542,6 +745,24 @@ export default function App() {
                   </div>
                   <div className="p-4 bg-slate-100 rounded-2xl border border-slate-200"><p className="text-[10px] text-slate-500 mb-1">Pending</p><p className="text-xl font-bold text-slate-700">{stats.pending}</p></div>
 
+                  {/* Progress Bar */}
+                  <div className="p-4 bg-gradient-to-br from-indigo-50 to-violet-50 rounded-2xl border border-indigo-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[10px] text-indigo-500 uppercase tracking-widest">Progress</p>
+                      <p className="text-sm font-bold text-indigo-600">
+                        {stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0}%
+                      </p>
+                    </div>
+                    <div className="h-2 bg-indigo-100 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${stats.total > 0 ? (stats.done / stats.total) * 100 : 0}%` }}
+                        transition={{ duration: 0.5, ease: 'easeOut' }}
+                        className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full"
+                      />
+                    </div>
+                  </div>
+
                   {selectedTask ? (
                     <div className="pt-6 border-t border-slate-200 space-y-4">
                       <div className="flex items-center justify-between">
@@ -749,6 +970,110 @@ export default function App() {
               <div className="text-center text-[10px] text-slate-400 uppercase tracking-wider">
                 Showing {records.length} records · Select multiple for batch operations
               </div>
+            </motion.div>
+          ) : activeTab === 'leaderboard' ? (
+            <motion.div
+              key="leaderboard"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="max-w-2xl mx-auto"
+            >
+              {/* Header */}
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl shadow-lg shadow-amber-200 mb-4">
+                  <Trophy size={32} className="text-white" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900">Author Leaderboard</h2>
+                <p className="text-slate-500 text-sm mt-1">Top contributors by upload count</p>
+              </div>
+
+              {/* Leaderboard Card */}
+              <div className="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-3xl overflow-hidden">
+                {authorLeaderboard.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+                    <Trophy size={48} className="mb-4 opacity-50" />
+                    <p className="font-semibold">No data yet</p>
+                    <p className="text-sm mt-1">Upload some files to see the leaderboard</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-200">
+                    {authorLeaderboard.map((entry, index) => (
+                      <motion.div
+                        key={entry.author}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className={`flex items-center gap-4 p-4 hover:bg-white/60 transition-colors ${
+                          index === 0 ? 'bg-gradient-to-r from-amber-50 to-orange-50' :
+                          index === 1 ? 'bg-gradient-to-r from-slate-50 to-slate-100' :
+                          index === 2 ? 'bg-gradient-to-r from-orange-50/50 to-amber-50/50' : ''
+                        }`}
+                      >
+                        {/* Rank */}
+                        <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${
+                          index === 0 ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-200' :
+                          index === 1 ? 'bg-gradient-to-br from-slate-300 to-slate-400 text-white shadow-lg shadow-slate-200' :
+                          index === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-700 text-white shadow-lg shadow-amber-200' :
+                          'bg-slate-100 text-slate-500'
+                        }`}>
+                          {index === 0 ? <Crown size={20} /> :
+                           index === 1 ? <Medal size={20} /> :
+                           index === 2 ? <Medal size={20} /> :
+                           <span className="text-sm font-bold">{index + 1}</span>}
+                        </div>
+
+                        {/* Author Info */}
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-semibold truncate ${
+                            index === 0 ? 'text-amber-700' :
+                            index === 1 ? 'text-slate-600' :
+                            index === 2 ? 'text-amber-600' :
+                            'text-slate-700'
+                          }`}>
+                            {entry.author}
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            {entry.count} upload{entry.count !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+
+                        {/* Upload Count Badge */}
+                        <div className={`px-3 py-1 rounded-full text-sm font-bold ${
+                          index === 0 ? 'bg-amber-100 text-amber-700' :
+                          index === 1 ? 'bg-slate-100 text-slate-600' :
+                          index === 2 ? 'bg-orange-100 text-orange-700' :
+                          'bg-slate-100 text-slate-500'
+                        }`}>
+                          {entry.count}
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Stats Summary */}
+              {authorLeaderboard.length > 0 && (
+                <div className="mt-6 grid grid-cols-3 gap-4">
+                  <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center">
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1">Total Authors</p>
+                    <p className="text-2xl font-bold text-slate-900">
+                      {new Set(records.map(r => r.author?.trim() || 'Anonymous')).size}
+                    </p>
+                  </div>
+                  <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-center">
+                    <p className="text-[10px] text-amber-500 uppercase tracking-widest mb-1">Top Author</p>
+                    <p className="text-lg font-bold text-amber-600 truncate">
+                      {authorLeaderboard[0]?.author || '-'}
+                    </p>
+                  </div>
+                  <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-center">
+                    <p className="text-[10px] text-indigo-500 uppercase tracking-widest mb-1">Total Uploads</p>
+                    <p className="text-2xl font-bold text-indigo-600">{records.length}</p>
+                  </div>
+                </div>
+              )}
             </motion.div>
           ) : null}
         </AnimatePresence>
