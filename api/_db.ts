@@ -20,7 +20,7 @@ export const sql = globalThis.sqlClient ??
     idle_timeout: 0,           // 禁用空闲超时
     connect_timeout: 30,       // 连接超时 30 秒
     prepare: false,            // 禁用预备语句（兼容性更好）
-    ssl: 'require',            // 强制 SSL
+    ssl: false,                // 禁用 SSL
     connection: {
       application_name: 'vercel-serverless',
     },
