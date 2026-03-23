@@ -7,7 +7,7 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Upload, FileJson, CheckCircle2, Loader2, X,
-  LayoutGrid, FileUp, RefreshCcw, Info,
+  LayoutGrid, FileUp, Trash2, RefreshCcw, Info,
   Database, Download, Eye, CheckSquare, Square, RefreshCw, Search
 } from 'lucide-react';
 import tasksData from '@/json/images.json';
@@ -26,6 +26,7 @@ interface Task {
 
 interface StoredRecord {
   id: number;
+  filename?: string;
   data: unknown;
   created_at: string;
 }
@@ -116,15 +117,26 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `record_${record.id}.json`;
+    a.download = record.filename || `record_${record.id}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const deleteSelected = async () => {
-    // Note: 后端需要添加 DELETE 接口，这里仅演示前端逻辑
-    console.log('删除选中:', Array.from(selectedIds));
-    setSelectedIds(new Set());
+    if (selectedIds.size === 0) return;
+
+    try {
+      const deletePromises = Array.from(selectedIds).map(id =>
+        fetch(`http://localhost:3001/api/tasks/${id}`, { method: 'DELETE' })
+      );
+      await Promise.all(deletePromises);
+
+      setRecords(prev => prev.filter(r => !selectedIds.has(r.id)));
+      console.log(`✅ 已删除 ${selectedIds.size} 条记录`);
+      setSelectedIds(new Set());
+    } catch (err) {
+      console.error('❌ 删除失败:', err);
+    }
   };
 
   const formatDate = (iso: string) => {
@@ -167,11 +179,14 @@ export default function App() {
       console.log('  - 内容:', data);
       console.log('  - 键名:', typeof data === 'object' ? Object.keys(data) : 'N/A');
 
-      // 保存到 Neon 数据库
+      // 保存到数据库
       const res = await fetch('http://localhost:3001/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data }),
+        body: JSON.stringify({
+          filename: file.name,
+          data,
+        }),
       });
       const result = await res.json();
       if (result.success) {
