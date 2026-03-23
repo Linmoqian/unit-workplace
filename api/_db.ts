@@ -10,9 +10,12 @@ declare global {
   var sqlClient: ReturnType<typeof postgres> | undefined;
 }
 
+// 去除可能存在的引号
+const databaseUrl = process.env.DATABASE_URL?.replace(/^["']|["']$/g, '')!;
+
 // Serverless 优化的连接配置
 export const sql = globalThis.sqlClient ??
-  postgres(process.env.DATABASE_URL!, {
+  postgres(databaseUrl, {
     max: 1,                    // 限制最大连接数
     idle_timeout: 0,           // 禁用空闲超时
     connect_timeout: 30,       // 连接超时 30 秒
