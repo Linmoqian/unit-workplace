@@ -1,11 +1,8 @@
 /**
  * 数据库连接 - Vercel Serverless 优化
- * 使用 postgres 包，配合 max: 1 限制连接数
+ * 使用 postgres 包，针对 Serverless 环境优化
  */
 import postgres from 'postgres';
-
-// Serverless 环境下限制最大连接数为 1，避免连接池耗尽
-const maxConnections = process.env.VERCEL ? 1 : 10;
 
 // 全局数据库连接（Serverless 环境复用）
 declare global {
@@ -13,11 +10,17 @@ declare global {
   var sqlClient: ReturnType<typeof postgres> | undefined;
 }
 
+// Serverless 优化的连接配置
 export const sql = globalThis.sqlClient ??
   postgres(process.env.DATABASE_URL!, {
-    max: maxConnections,
-    idle_timeout: 20,
-    connect_timeout: 10,
+    max: 1,                    // 限制最大连接数
+    idle_timeout: 0,           // 禁用空闲超时
+    connect_timeout: 30,       // 连接超时 30 秒
+    prepare: false,            // 禁用预备语句（兼容性更好）
+    ssl: 'require',            // 强制 SSL
+    connection: {
+      application_name: 'vercel-serverless',
+    },
   });
 
 if (process.env.NODE_ENV !== 'production') {
