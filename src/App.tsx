@@ -37,48 +37,75 @@ type Tab = 'uploader' | 'monitor' | 'admin';
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('uploader');
 
-  // --- Uploader State ---
-  const [files, setFiles] = useState<File[]>([]);
-  const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
-  const [isDragging, setIsDragging] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<{ total: number; done: number } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // --- Task Grid State ---
-  const [tasks, setTasks] = useState<Task[]>(() =>
-    (tasksData as Array<{ img_name: number; state: string; background: string }>).map((item, index) => ({
-      id: `task-${item.img_name}`,
-      img_name: item.img_name,
-      status: item.state as TaskStatus,
-      background: item.background as TaskBackground,
-    }))
-  );
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  // --- Admin State ---
+  // ========== SHARED DATA SOURCE ==========
   const [records, setRecords] = useState<StoredRecord[]>([]);
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [isLoading, setIsLoading] = useState(false);
+  const [isDBLoading, setIsDBLoading] = useState(false);
+  const isRequestPending = useRef(false);
 
-  // --- Admin Logic ---
-  const fetchRecords = useCallback(async () => {
-    setIsLoading(true);
+  // 统一的数据获取函数（带请求锁）
+  const fetchDBData = useCallback(async () => {
+    if (isRequestPending.current) {
+      console.log('⏳ Request in progress, skipping...');
+      return;
+    }
+
+    isRequestPending.current = true;
+    setIsDBLoading(true);
     try {
       const res = await fetch('http://localhost:3001/api/tasks');
       const data = await res.json();
       setRecords(data);
+      console.log(`✅ Fetched ${data.length} records from database`);
     } catch (err) {
-      console.error('Failed to fetch data:', err);
+      console.error('❌ Failed to fetch data:', err);
     } finally {
-      setIsLoading(false);
+      setIsDBLoading(false);
+      isRequestPending.current = false;
     }
   }, []);
 
-  useEffect(() => {
-    if (activeTab === 'admin') fetchRecords();
-  }, [activeTab, fetchRecords]);
+  // 从 records 提取已上传的文件名集合（共享给 Task Monitor 使用）
+  const dbFilenames = useMemo(() => {
+    const set = new Set<string>();
+    records.forEach(r => {
+      if (r.filename) {
+        // IMG_1279.json -> IMG_1279
+        const name = r.filename.replace('.json', '');
+        set.add(name);
+      }
+    });
+    return set;
+  }, [records]);
+
+  // ========== TASK MONITOR ==========
+  // 任务列表：从 images.json 加载，status 根据 dbFilenames 动态计算
+  const tasks = useMemo<Task[]>(() => {
+    return (tasksData as Array<{ img_name: number; state: string; background: string }>).map((item) => ({
+      id: `task-${item.img_name}`,
+      img_name: item.img_name,
+      status: dbFilenames.has(`IMG_${item.img_name}`) ? 'done' : 'pending',
+      background: item.background as TaskBackground,
+    }));
+  }, [dbFilenames]);
+
+  const stats = useMemo(() => ({
+    total: tasks.length,
+    pending: tasks.filter(t => t.status === 'pending').length,
+    done: tasks.filter(t => t.status === 'done').length,
+  }), [tasks]);
+
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredTasks = useMemo(() => {
+    if (!searchQuery.trim()) return tasks;
+    return tasks.filter(t => t.img_name.toString().includes(searchQuery.trim()));
+  }, [tasks, searchQuery]);
+
+  const selectedTask = tasks.find(t => t.id === selectedTaskId);
+
+  // ========== DATA ADMIN ==========
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const toggleSelect = (id: number) => {
     const newSet = new Set(selectedIds);
@@ -132,6 +159,7 @@ export default function App() {
       );
       await Promise.all(deletePromises);
 
+      // 更新本地 records
       setRecords(prev => prev.filter(r => !selectedIds.has(r.id)));
       console.log(`✅ Deleted ${selectedIds.size} record(s)`);
       setSelectedIds(new Set());
@@ -147,7 +175,14 @@ export default function App() {
     });
   };
 
-  // --- Uploader Logic ---
+  // ========== UPLOADER ==========
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ total: number; done: number } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const validateAndAddFiles = (newFiles: FileList | File[]) => {
     const validFiles: File[] = [];
     const invalidNames: string[] = [];
@@ -161,7 +196,7 @@ export default function App() {
     });
 
     if (invalidNames.length > 0) {
-      setUploadError(`不支持的格式: ${invalidNames.join(', ')}`);
+      setUploadError(`Unsupported format: ${invalidNames.join(', ')}`);
     }
 
     if (validFiles.length > 0) {
@@ -219,6 +254,11 @@ export default function App() {
     console.log(`\n📊 Upload complete: ${successCount} success / ${failCount} failed`);
     setUploadStatus('success');
     setUploadProgress(null);
+
+    // 上传成功后刷新共享数据
+    if (successCount > 0) {
+      fetchDBData();
+    }
   };
 
   const removeFile = (index: number) => {
@@ -236,20 +276,7 @@ export default function App() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // --- Task Grid Logic ---
-  const stats = useMemo(() => ({
-    total: tasks.length,
-    pending: tasks.filter(t => t.status === 'pending').length,
-    done: tasks.filter(t => t.status === 'done').length,
-  }), [tasks]);
-
-  const filteredTasks = useMemo(() => {
-    if (!searchQuery.trim()) return tasks;
-    return tasks.filter(t => t.img_name.toString().includes(searchQuery.trim()));
-  }, [tasks, searchQuery]);
-
-  const selectedTask = tasks.find(t => t.id === selectedTaskId);
-
+  // ========== RENDER ==========
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-700">
       {/* Navigation */}
@@ -262,7 +289,7 @@ export default function App() {
             <span className="font-bold tracking-tight text-lg">Unified Workspace</span>
           </div>
           <div className="flex bg-slate-100 p-1 rounded-xl">
-            <button 
+            <button
               onClick={() => setActiveTab('uploader')}
               className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${activeTab === 'uploader' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             >
@@ -418,9 +445,19 @@ export default function App() {
             >
               <div className="lg:col-span-2 space-y-6">
                 <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <h2 className="text-xl font-bold text-slate-900">Task Core Grid</h2>
-                    <p className="text-slate-500 text-sm">Real-time unit status visualization</p>
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-900">Task Core Grid</h2>
+                      <p className="text-slate-500 text-sm">Real-time unit status visualization</p>
+                    </div>
+                    <button
+                      onClick={fetchDBData}
+                      disabled={isDBLoading}
+                      className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors text-slate-600 disabled:opacity-50"
+                      title="Sync with database"
+                    >
+                      <RefreshCw size={18} className={isDBLoading ? 'animate-spin' : ''} />
+                    </button>
                   </div>
                   <div className="relative">
                     <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -460,12 +497,10 @@ export default function App() {
                             ${task.status === 'done' ? 'bg-emerald-500 border-emerald-400' : ''}
                           `}
                         >
-                          {/* Subtle backdrop on hover */}
                           <span className="
                             absolute inset-0 bg-white/90 backdrop-blur-sm
                             opacity-0 group-hover:opacity-100 transition-opacity duration-300
                           " />
-                          {/* Floating ID on hover */}
                           <span className="
                             absolute inset-0 z-10 flex items-center justify-center
                             text-sm font-bold tracking-tight text-violet-600
@@ -511,7 +546,7 @@ export default function App() {
                   ) : (
                     <div className="pt-6 border-t border-slate-200 text-center py-8">
                       <Info size={24} className="mx-auto text-slate-200 mb-2" />
-                      <p className="text-[10px] text-slate-400">Select a unit to modify</p>
+                      <p className="text-[10px] text-slate-400">Select a unit to view details</p>
                     </div>
                   )}
                 </div>
@@ -533,11 +568,11 @@ export default function App() {
                 </div>
                 <div className="flex items-center gap-3">
                   <button
-                    onClick={fetchRecords}
-                    disabled={isLoading}
+                    onClick={fetchDBData}
+                    disabled={isDBLoading}
                     className="p-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors text-slate-600 disabled:opacity-50"
                   >
-                    <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
+                    <RefreshCw size={18} className={isDBLoading ? 'animate-spin' : ''} />
                   </button>
                   <button
                     onClick={downloadSelected}
@@ -584,7 +619,7 @@ export default function App() {
 
               {/* Data Table */}
               <div className="bg-slate-50/50 border border-slate-200 rounded-3xl overflow-hidden">
-                {isLoading ? (
+                {isDBLoading ? (
                   <div className="flex items-center justify-center py-20">
                     <Loader2 size={32} className="animate-spin text-indigo-600" />
                   </div>
@@ -674,22 +709,6 @@ export default function App() {
                                   >
                                     <Eye size={16} />
                                   </button>
-                                  <button
-                                    onClick={() => {
-                                      if (confirm('Delete this record?')) {
-                                        setRecords(prev => prev.filter(r => r.id !== record.id));
-                                        setSelectedIds(prev => {
-                                          const next = new Set(prev);
-                                          next.delete(record.id);
-                                          return next;
-                                        });
-                                      }
-                                    }}
-                                    className="p-2 rounded-lg hover:bg-rose-50 text-slate-500 hover:text-rose-500 transition-colors"
-                                    title="Delete"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
                                 </div>
                               </td>
                             </motion.tr>
@@ -712,6 +731,3 @@ export default function App() {
     </div>
   );
 }
-
-
-
