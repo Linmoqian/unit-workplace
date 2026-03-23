@@ -3,7 +3,7 @@
  * POST /api/tasks - 创建新任务
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sql, initDB } from '../_db';
+import { sql, initDB } from '../_db.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
