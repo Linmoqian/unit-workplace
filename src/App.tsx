@@ -38,10 +38,11 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('uploader');
 
   // --- Uploader State ---
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ total: number; done: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // --- Task Grid State ---
@@ -69,7 +70,7 @@ export default function App() {
       const data = await res.json();
       setRecords(data);
     } catch (err) {
-      console.error('获取数据失败:', err);
+      console.error('Failed to fetch data:', err);
     } finally {
       setIsLoading(false);
     }
@@ -132,10 +133,10 @@ export default function App() {
       await Promise.all(deletePromises);
 
       setRecords(prev => prev.filter(r => !selectedIds.has(r.id)));
-      console.log(`✅ 已删除 ${selectedIds.size} 条记录`);
+      console.log(`✅ Deleted ${selectedIds.size} record(s)`);
       setSelectedIds(new Set());
     } catch (err) {
-      console.error('❌ 删除失败:', err);
+      console.error('❌ Delete failed:', err);
     }
   };
 
@@ -147,62 +148,89 @@ export default function App() {
   };
 
   // --- Uploader Logic ---
-  const validateAndSetFile = (selectedFile: File) => {
-    if (selectedFile.type === 'application/json' || selectedFile.name.endsWith('.json')) {
-      setFile(selectedFile);
+  const validateAndAddFiles = (newFiles: FileList | File[]) => {
+    const validFiles: File[] = [];
+    const invalidNames: string[] = [];
+
+    Array.from(newFiles).forEach(f => {
+      if (f.type === 'application/json' || f.name.endsWith('.json')) {
+        validFiles.push(f);
+      } else {
+        invalidNames.push(f.name);
+      }
+    });
+
+    if (invalidNames.length > 0) {
+      setUploadError(`不支持的格式: ${invalidNames.join(', ')}`);
+    }
+
+    if (validFiles.length > 0) {
+      setFiles(prev => [...prev, ...validFiles]);
       setUploadError(null);
       setUploadStatus('idle');
-    } else {
-      setUploadError('Only .json files are supported');
-      setFile(null);
     }
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) validateAndSetFile(droppedFile);
+    if (e.dataTransfer.files.length > 0) {
+      validateAndAddFiles(e.dataTransfer.files);
+    }
   };
 
   const simulateUpload = async () => {
-    if (!file) return;
+    if (files.length === 0) return;
     setUploadStatus('uploading');
     setUploadError(null);
+    setUploadProgress({ total: files.length, done: 0 });
 
-    try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-      console.log('📊 上传数据调试:');
-      console.log('  - 总数:', Array.isArray(data) ? data.length : 'N/A');
-      console.log('  - 类型:', typeof data);
-      console.log('  - 内容:', data);
-      console.log('  - 键名:', typeof data === 'object' ? Object.keys(data) : 'N/A');
+    let successCount = 0;
+    let failCount = 0;
 
-      // 保存到数据库
-      const res = await fetch('http://localhost:3001/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filename: file.name,
-          data,
-        }),
-      });
-      const result = await res.json();
-      if (result.success) {
-        console.log('✅ 已保存到数据库, ID:', result.id);
-      } else {
-        console.error('❌ 保存失败:', result.error);
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        console.log(`📤 [${i + 1}/${files.length}] Uploading: ${file.name}`);
+
+        const res = await fetch('http://localhost:3001/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: file.name, data }),
+        });
+        const result = await res.json();
+
+        if (result.success) {
+          successCount++;
+          console.log(`   ✅ Success | ID: ${result.id}`);
+        } else {
+          failCount++;
+          console.error(`   ❌ Failed:`, result.error);
+        }
+      } catch (err) {
+        failCount++;
+        console.error(`   ❌ Parse error:`, err);
       }
-    } catch (err) {
-      console.error('❌ JSON 解析或上传失败:', err);
+      setUploadProgress({ total: files.length, done: i + 1 });
     }
 
+    console.log(`\n📊 Upload complete: ${successCount} success / ${failCount} failed`);
     setUploadStatus('success');
+    setUploadProgress(null);
   };
 
-  const removeFile = () => {
-    setFile(null);
+  const removeFile = (index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
+    if (files.length === 1) {
+      setUploadStatus('idle');
+      setUploadError(null);
+    }
+  };
+
+  const clearAllFiles = () => {
+    setFiles([]);
     setUploadStatus('idle');
     setUploadError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -269,68 +297,114 @@ export default function App() {
               exit={{ opacity: 0, y: -10 }}
               className="flex flex-col items-center justify-center min-h-[60vh]"
             >
-              <div className="w-full max-w-md bg-slate-50/50 border border-slate-200 rounded-3xl p-8 shadow-sm">
-                <div className="text-center mb-8">
+              <div className="w-full max-w-lg bg-slate-50/50 border border-slate-200 rounded-3xl p-8 shadow-sm">
+                <div className="text-center mb-6">
                   <h2 className="text-xl font-bold text-slate-900">JSON File Uploader</h2>
-                  <p className="text-slate-500 text-sm mt-1">Select or drag a .json file to begin processing</p>
+                  <p className="text-slate-500 text-sm mt-1">Drag & drop or select multiple JSON files</p>
                 </div>
 
+                {/* Drop Zone */}
                 <div
                   onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                   onDragLeave={() => setIsDragging(false)}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
                   className={`
-                    relative group cursor-pointer aspect-video rounded-2xl border-2 border-dashed transition-all duration-300
-                    flex flex-col items-center justify-center gap-4 overflow-hidden
+                    relative group cursor-pointer rounded-2xl border-2 border-dashed transition-all duration-300
+                    flex flex-col items-center justify-center gap-2 p-6
                     ${isDragging ? 'border-indigo-500 bg-indigo-50/50 scale-[1.02]' : 'border-slate-200 hover:border-indigo-400 hover:bg-white'}
                     ${uploadStatus === 'success' ? 'border-emerald-500 bg-emerald-50/30' : ''}
                     ${uploadStatus === 'error' ? 'border-rose-500 bg-rose-50/30' : ''}
                   `}
                 >
-                  <input type="file" ref={fileInputRef} onChange={(e) => validateAndSetFile(e.target.files?.[0] as File)} accept=".json" className="hidden" />
-                  
-                  <AnimatePresence mode="wait">
-                    {!file && uploadStatus === 'idle' && (
-                      <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center text-slate-400">
-                        <Upload size={32} className="mb-2 group-hover:text-indigo-500 transition-colors" />
-                        <p className="text-sm font-medium">Drag & drop .json here</p>
-                      </motion.div>
-                    )}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={(e) => e.target.files && validateAndAddFiles(e.target.files)}
+                    accept=".json"
+                    multiple
+                    className="hidden"
+                  />
 
-                    {file && uploadStatus === 'idle' && (
-                      <motion.div key="selected" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center text-indigo-600">
-                        <FileJson size={32} className="mb-2" />
-                        <p className="text-sm font-semibold truncate max-w-[200px]">{file.name}</p>
-                        <button onClick={(e) => { e.stopPropagation(); removeFile(); }} className="absolute top-4 right-4 p-1.5 bg-white rounded-full shadow-sm text-slate-400 hover:text-rose-500 transition-colors">
-                          <X size={16} />
-                        </button>
-                      </motion.div>
-                    )}
+                  {uploadStatus === 'idle' && (
+                    <div className="flex flex-col items-center text-slate-400">
+                      <Upload size={28} className="mb-2 group-hover:text-indigo-500 transition-colors" />
+                      <p className="text-sm font-medium">Drag & drop JSON files here</p>
+                      <p className="text-xs text-slate-300 mt-1">Multiple selection supported</p>
+                    </div>
+                  )}
 
-                    {uploadStatus === 'uploading' && (
-                      <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center text-indigo-600">
-                        <Loader2 size={32} className="animate-spin mb-2" />
-                        <p className="text-sm font-medium">Processing...</p>
-                      </motion.div>
-                    )}
+                  {uploadStatus === 'uploading' && uploadProgress && (
+                    <div className="flex flex-col items-center text-indigo-600">
+                      <Loader2 size={28} className="animate-spin mb-2" />
+                      <p className="text-sm font-medium">Uploading...</p>
+                      <p className="text-xs text-slate-400">{uploadProgress.done} / {uploadProgress.total}</p>
+                    </div>
+                  )}
 
-                    {uploadStatus === 'success' && (
-                      <motion.div key="success" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center text-emerald-600">
-                        <CheckCircle2 size={32} className="mb-2" />
-                        <p className="text-sm font-semibold">Upload Successful</p>
-                        <button onClick={(e) => { e.stopPropagation(); removeFile(); }} className="mt-2 text-xs font-medium underline underline-offset-4">Reset</button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  {uploadStatus === 'success' && (
+                    <div className="flex flex-col items-center text-emerald-600">
+                      <CheckCircle2 size={28} className="mb-2" />
+                      <p className="text-sm font-semibold">Upload Complete</p>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); clearAllFiles(); }}
+                        className="mt-1 text-xs text-slate-400 hover:text-indigo-600"
+                      >
+                        Clear & upload more
+                      </button>
+                    </div>
+                  )}
                 </div>
 
+                {/* File List */}
+                {files.length > 0 && uploadStatus === 'idle' && (
+                  <div className="mt-4 space-y-2 max-h-48 overflow-y-auto">
+                    <div className="flex items-center justify-between px-2">
+                      <span className="text-xs text-slate-500">{files.length} file(s) selected</span>
+                      <button
+                        onClick={clearAllFiles}
+                        className="text-xs text-rose-500 hover:text-rose-600"
+                      >
+                        Clear all
+                      </button>
+                    </div>
+                    {files.map((f, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between bg-white rounded-xl px-3 py-2 border border-slate-100"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileJson size={16} className="text-indigo-500 flex-shrink-0" />
+                          <span className="text-sm text-slate-700 truncate">{f.name}</span>
+                          <span className="text-xs text-slate-400 flex-shrink-0">
+                            {(f.size / 1024).toFixed(1)}KB
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => removeFile(i)}
+                          className="text-slate-400 hover:text-rose-500 transition-colors"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Upload Button */}
                 <button
-                  disabled={!file || uploadStatus !== 'idle'}
+                  disabled={files.length === 0 || uploadStatus !== 'idle'}
                   onClick={simulateUpload}
-                  className={`w-full mt-8 py-4 rounded-2xl font-bold text-white transition-all ${!file || uploadStatus !== 'idle' ? 'bg-slate-200' : 'bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100'}`}
+                  className={`w-full mt-6 py-4 rounded-2xl font-bold text-white transition-all ${
+                    files.length === 0 || uploadStatus !== 'idle'
+                      ? 'bg-slate-200'
+                      : 'bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100'
+                  }`}
                 >
-                  {uploadStatus === 'uploading' ? 'Uploading...' : 'Submit JSON'}
+                  {uploadStatus === 'uploading'
+                    ? `Uploading (${uploadProgress?.done}/${uploadProgress?.total})...`
+                    : files.length > 0 ? `Upload ${files.length} file(s)` : 'Upload'
+                  }
                 </button>
               </div>
             </motion.div>
