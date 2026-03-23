@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Upload, FileJson, CheckCircle2, Loader2, X,
   LayoutGrid, FileUp, Trash2, RefreshCcw, Info,
-  Database, Download, Eye, CheckSquare, Square, RefreshCw
+  Database, Download, Eye, CheckSquare, Square, RefreshCw, Search
 } from 'lucide-react';
 import tasksData from '@/json/images.json';
 
@@ -53,6 +53,7 @@ export default function App() {
     }))
   );
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // --- Admin State ---
   const [records, setRecords] = useState<StoredRecord[]>([]);
@@ -199,6 +200,11 @@ export default function App() {
     done: tasks.filter(t => t.status === 'done').length,
   }), [tasks]);
 
+  const filteredTasks = useMemo(() => {
+    if (!searchQuery.trim()) return tasks;
+    return tasks.filter(t => t.img_name.toString().includes(searchQuery.trim()));
+  }, [tasks, searchQuery]);
+
   const removeTask = (id: string) => {
     setTasks(prev => prev.filter(t => t.id !== id));
     if (selectedTaskId === id) setSelectedTaskId(null);
@@ -327,15 +333,35 @@ export default function App() {
               className="grid grid-cols-1 lg:grid-cols-3 gap-8"
             >
               <div className="lg:col-span-2 space-y-6">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900">Task Core Grid</h2>
-                  <p className="text-slate-500 text-sm">Real-time unit status visualization</p>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">Task Core Grid</h2>
+                    <p className="text-slate-500 text-sm">Real-time unit status visualization</p>
+                  </div>
+                  <div className="relative">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9 pr-3 py-2 w-32 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="bg-slate-50/50 border border-slate-200 rounded-3xl p-8">
                   <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2">
                     <AnimatePresence>
-                      {tasks.map((task) => (
+                      {filteredTasks.map((task) => (
                         <motion.button
                           key={task.id}
                           layout
