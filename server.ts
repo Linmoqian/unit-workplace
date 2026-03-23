@@ -36,19 +36,19 @@ app.get('/api/health', (req, res) => {
 // API: 保存 JSON 数据
 app.post('/api/tasks', async (req, res) => {
   try {
-    const { filename, data } = req.body;
-    console.log(`收到请求 | 文件: ${filename} | 数据类型: ${typeof data}`);
+    const { filename, data, author } = req.body;
+    console.log(`收到请求 | 文件: ${filename} | 作者: ${author || 'N/A'} | 数据类型: ${typeof data}`);
 
     if (!data) {
       return res.status(400).json({ success: false, error: '缺少 data 字段' });
     }
 
     const result = await sql`
-      INSERT INTO task_data (filename, data) VALUES (${filename || 'unknown'}, ${JSON.stringify(data)}) RETURNING id
+      INSERT INTO task_data (filename, data, author) VALUES (${filename || 'unknown'}, ${JSON.stringify(data)}, ${author || null}) RETURNING id
     `;
     const id = result[0].id;
-    console.log(`${C.GREEN}✓ 保存成功${C.RESET} | ${C.CYAN}ID:${id}${C.RESET} | ${C.BLUE}${filename}${C.RESET}`);
-    res.json({ success: true, id, filename });
+    console.log(`${C.GREEN}✓ 保存成功${C.RESET} | ${C.CYAN}ID:${id}${C.RESET} | ${C.BLUE}${filename}${C.RESET} | ${C.YELLOW}作者:${author || 'N/A'}${C.RESET}`);
+    res.json({ success: true, id, filename, author });
   } catch (err: any) {
     console.error(`${C.RED}✗ 保存失败${C.RESET}`, err?.message || err);
     res.status(500).json({ success: false, error: err?.message || '保存失败' });
@@ -98,10 +98,19 @@ async function initDB() {
         id SERIAL PRIMARY KEY,
         filename TEXT,
         data JSONB NOT NULL,
+        author TEXT,
         created_at TIMESTAMPTZ DEFAULT NOW()
       )
     `;
     console.log(`${C.GREEN}✓ 数据表已就绪${C.RESET}`);
+
+    // 添加 author 列（如果不存在）
+    try {
+      await sql`ALTER TABLE task_data ADD COLUMN IF NOT EXISTS author TEXT`;
+      console.log(`${C.GREEN}✓ author 列已添加${C.RESET}`);
+    } catch {
+      // 列已存在，忽略
+    }
 
     // 打印表结构
     const columns = await sql`

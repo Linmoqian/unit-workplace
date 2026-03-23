@@ -28,6 +28,7 @@ interface StoredRecord {
   id: number;
   filename?: string;
   data: unknown;
+  author?: string;
   created_at: string;
 }
 
@@ -181,6 +182,7 @@ export default function App() {
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<{ total: number; done: number } | null>(null);
+  const [author, setAuthor] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const validateAndAddFiles = (newFiles: FileList | File[]) => {
@@ -233,7 +235,7 @@ export default function App() {
         const res = await fetch('http://localhost:3001/api/tasks', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ filename: file.name, data }),
+          body: JSON.stringify({ filename: file.name, data, author: author.trim() || undefined }),
         });
         const result = await res.json();
 
@@ -273,6 +275,7 @@ export default function App() {
     setFiles([]);
     setUploadStatus('idle');
     setUploadError(null);
+    setAuthor('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -382,6 +385,20 @@ export default function App() {
                     </div>
                   )}
                 </div>
+
+                {/* Author Input */}
+                {files.length > 0 && uploadStatus === 'idle' && (
+                  <div className="mt-4">
+                    <label className="block text-xs text-slate-500 mb-1.5">Author (optional)</label>
+                    <input
+                      type="text"
+                      value={author}
+                      onChange={(e) => setAuthor(e.target.value)}
+                      placeholder="Enter author name..."
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                )}
 
                 {/* File List */}
                 {files.length > 0 && uploadStatus === 'idle' && (
@@ -647,6 +664,8 @@ export default function App() {
                             </button>
                           </th>
                           <th className="text-left p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID</th>
+                          <th className="text-left p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Filename</th>
+                          <th className="text-left p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Author</th>
                           <th className="text-left p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Preview</th>
                           <th className="text-left p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Created At</th>
                           <th className="text-left p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Actions</th>
@@ -680,6 +699,12 @@ export default function App() {
                                 <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 text-sm font-bold text-slate-600">
                                   {record.id}
                                 </span>
+                              </td>
+                              <td className="p-4">
+                                <span className="text-sm text-slate-600 font-mono">{record.filename || '-'}</span>
+                              </td>
+                              <td className="p-4">
+                                <span className="text-sm text-slate-600">{record.author || '-'}</span>
                               </td>
                               <td className="p-4 max-w-md">
                                 <code className="text-xs bg-slate-100 px-2 py-1 rounded font-mono text-slate-600 block truncate">
