@@ -13,6 +13,9 @@ import {
 } from 'lucide-react';
 import tasksData from '@/json/images.json';
 
+// API 基础路径（生产环境使用相对路径，开发环境可选代理）
+const API_BASE = '/api';
+
 // --- Types ---
 type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
 type TaskStatus = 'pending' | 'done';
@@ -288,7 +291,7 @@ export default function App() {
     isRequestPending.current = true;
     setIsDBLoading(true);
     try {
-      const res = await fetch('http://localhost:3001/api/tasks');
+      const res = await fetch(`${API_BASE}/tasks`);
       const data = await res.json();
       setRecords(data);
       console.log(`✅ Fetched ${data.length} records from database`);
@@ -428,7 +431,7 @@ export default function App() {
         setPasswordDialog(prev => ({ ...prev, isOpen: false }));
         try {
           const deletePromises = Array.from(selectedIds).map(id =>
-            fetch(`http://localhost:3001/api/tasks/${id}`, { method: 'DELETE' })
+            fetch(`${API_BASE}/tasks/${id}`, { method: 'DELETE' })
           );
           await Promise.all(deletePromises);
 
@@ -509,7 +512,7 @@ export default function App() {
         const data = JSON.parse(text);
         console.log(`📤 [${i + 1}/${files.length}] Uploading: ${file.name}`);
 
-        const res = await fetch('http://localhost:3001/api/tasks', {
+        const res = await fetch(`${API_BASE}/tasks`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ filename: file.name, data, author: author.trim() || undefined }),

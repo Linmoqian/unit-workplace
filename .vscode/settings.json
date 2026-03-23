@@ -3,5 +3,9 @@
     "python-envs.defaultPackageManager": "ms-python.python:conda",
     "python.terminal.executeInFileDir": false,
     "python.terminal.isModuleExecution": false,
-    "terminal.integrated.shellArgs.windows": ["-NoExit", "-Command", "&{ $null }"]
+    "terminal.integrated.shellArgs.windows": [
+        "-NoExit",
+        "-Command",
+        "&{ $null }"
+    ]
 }
