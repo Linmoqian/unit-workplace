@@ -9,7 +9,7 @@ import {
   Upload, FileJson, CheckCircle2, Loader2, X,
   LayoutGrid, FileUp, Trash2, RefreshCcw, Info,
   Database, Download, Eye, CheckSquare, Square, RefreshCw, Search,
-  AlertTriangle, XCircle, Trophy, Crown, Medal
+  AlertTriangle, XCircle, Trophy, Crown, Medal, Lock
 } from 'lucide-react';
 import tasksData from '@/json/images.json';
 
@@ -131,6 +131,104 @@ const ConfirmDialog: React.FC<{
   );
 };
 
+// --- Password Dialog Component ---
+const PasswordDialog: React.FC<{
+  isOpen: boolean;
+  title: string;
+  passwordType: 'download' | 'delete';
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({ isOpen, title, passwordType, onConfirm, onCancel }) => {
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  // Passwords from .env.local (in production, this should be server-side validation)
+  const passwords = {
+    download: '123456',
+    delete: '1433223'
+  };
+
+  const handleSubmit = () => {
+    if (password === passwords[passwordType]) {
+      setPassword('');
+      setError('');
+      onConfirm();
+    } else {
+      setError('Incorrect password');
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSubmit();
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+        onClick={onCancel}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          onClick={(e) => e.stopPropagation()}
+          className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-xl bg-indigo-100">
+              <Lock size={24} className="text-indigo-500" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+          </div>
+
+          <p className="text-slate-500 text-sm mb-4">
+            Enter password to {passwordType === 'download' ? 'download' : 'delete'} records.
+          </p>
+
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => { setPassword(e.target.value); setError(''); }}
+            onKeyDown={handleKeyDown}
+            placeholder="Enter password..."
+            autoFocus
+            className={`w-full px-4 py-3 bg-slate-50 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              error ? 'border-rose-300 bg-rose-50' : 'border-slate-200'
+            }`}
+          />
+
+          {error && (
+            <p className="text-rose-500 text-xs mt-2">{error}</p>
+          )}
+
+          <div className="flex gap-3 justify-end mt-6">
+            <button
+              onClick={() => { setPassword(''); setError(''); onCancel(); }}
+              className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+            >
+              Confirm
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
 // --- Main App ---
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('uploader');
@@ -161,6 +259,18 @@ export default function App() {
 
   const showConfirm = useCallback((title: string, message: string, onConfirm: () => void) => {
     setConfirmDialog({ isOpen: true, title, message, onConfirm });
+  }, []);
+
+  // ========== PASSWORD DIALOG ==========
+  const [passwordDialog, setPasswordDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    passwordType: 'download' | 'delete';
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', passwordType: 'download', onConfirm: () => {} });
+
+  const showPasswordDialog = useCallback((title: string, passwordType: 'download' | 'delete', onConfirm: () => void) => {
+    setPasswordDialog({ isOpen: true, title, passwordType, onConfirm });
   }, []);
 
   // ========== SHARED DATA SOURCE ==========
@@ -295,6 +405,7 @@ export default function App() {
     a.download = `export_${selected.length}_records_${new Date().toISOString().slice(0,10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    showToast('success', `Downloaded ${selected.length} record(s)`);
   };
 
   const downloadSingle = (record: StoredRecord) => {
@@ -310,11 +421,11 @@ export default function App() {
   const deleteSelected = async () => {
     if (selectedIds.size === 0) return;
 
-    showConfirm(
-      'Delete Records',
-      `Are you sure you want to delete ${selectedIds.size} record(s)? This action cannot be undone.`,
+    showPasswordDialog(
+      'Delete Verification',
+      'delete',
       async () => {
-        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        setPasswordDialog(prev => ({ ...prev, isOpen: false }));
         try {
           const deletePromises = Array.from(selectedIds).map(id =>
             fetch(`http://localhost:3001/api/tasks/${id}`, { method: 'DELETE' })
@@ -476,6 +587,15 @@ export default function App() {
         onConfirm={confirmDialog.onConfirm}
         onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
         variant="danger"
+      />
+
+      {/* Password Dialog */}
+      <PasswordDialog
+        isOpen={passwordDialog.isOpen}
+        title={passwordDialog.title}
+        passwordType={passwordDialog.passwordType}
+        onConfirm={passwordDialog.onConfirm}
+        onCancel={() => setPasswordDialog(prev => ({ ...prev, isOpen: false }))}
       />
 
       {/* Navigation */}
