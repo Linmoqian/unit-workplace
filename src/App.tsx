@@ -7,7 +7,7 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Upload, FileJson, CheckCircle2, Loader2, X,
-  LayoutGrid, FileUp, Trash2, RefreshCcw, Info,
+  LayoutGrid, FileUp, RefreshCcw, Info,
   Database, Download, Eye, CheckSquare, Square, RefreshCw, Search
 } from 'lucide-react';
 import tasksData from '@/json/images.json';
@@ -205,11 +205,6 @@ export default function App() {
     return tasks.filter(t => t.img_name.toString().includes(searchQuery.trim()));
   }, [tasks, searchQuery]);
 
-  const removeTask = (id: string) => {
-    setTasks(prev => prev.filter(t => t.id !== id));
-    if (selectedTaskId === id) setSelectedTaskId(null);
-  };
-
   const selectedTask = tasks.find(t => t.id === selectedTaskId);
 
   return (
@@ -249,7 +244,7 @@ export default function App() {
         </div>
       </nav>
 
-      <main className="max-w-5xl mx-auto p-6 md:p-12">
+      <main className="max-w-7xl mx-auto p-6 md:p-12">
         <AnimatePresence mode="wait">
           {activeTab === 'uploader' ? (
             <motion.div
@@ -359,7 +354,7 @@ export default function App() {
                 </div>
 
                 <div className="bg-slate-50/50 border border-slate-200 rounded-3xl p-8">
-                  <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2">
+                  <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(48px, 1fr))' }}>
                     <AnimatePresence>
                       {filteredTasks.map((task) => (
                         <motion.button
@@ -410,7 +405,6 @@ export default function App() {
                     <div className="pt-6 border-t border-slate-200 space-y-4">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-bold">IMG_{selectedTask.img_name}</span>
-                        <button onClick={() => removeTask(selectedTask.id)} className="text-slate-400 hover:text-rose-500 transition-colors"><Trash2 size={16} /></button>
                       </div>
                       <div className="text-xs text-slate-500">
                         State: <span className={`font-semibold ${selectedTask.status === 'done' ? 'text-emerald-600' : 'text-slate-700'}`}>{selectedTask.status}</span>
