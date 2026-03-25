@@ -4,12 +4,10 @@ JSON 文件上传与任务状态监控系统。
 
 ## 功能
 
-- 📤 **文件上传** - 拖拽/选择 JSON 文件批量上传
-- 📊 **任务监控** - 24 宫格任务状态视图
-- 🗄️ **数据持久化** - PostgreSQL 数据库存储
-- 🏆 **排行榜** - 作者贡献统计
-- 🔒 **密码保护** - 下载/删除操作需验证
-
+同步团队的标注任务和数据
+![](assets/readme/feature-overview.png)
+![上传面板](assets/readme/uploader-panel.png)
+![任务监控网格](assets/readme/task-monitor-grid.png)
 ## 技术栈
 
 - **前端**: React 19 + TypeScript + Tailwind CSS v4 + Motion
